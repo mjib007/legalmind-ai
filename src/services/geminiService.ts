@@ -1,286 +1,191 @@
-/**
- * LegalMind AI - Gemini AI 分析服務
- * 專門處理法律判決分析和訴狀生成
- */
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { VerdictAnalysis, DocType } from "../types";
 
-export interface JudgmentAnalysis {
-  summary: string;
-  caseInfo: {
-    caseNumber: string;
-    court: string;
-    parties: {
-      plaintiff: string;
-      defendant: string;
-    };
-  };
-  favorablePoints: string[];
-  unfavorablePoints: string[];
-  legalGrounds: string[];
-  appealableIssues: string[];
-  recommendedStrategy: string;
-}
-
-export interface DocumentGenerationRequest {
-  documentType: '民事上訴狀' | '刑事上訴狀' | '答辯狀' | '起訴狀';
-  analysis: JudgmentAnalysis;
-  customInstructions?: string;
-}
-
-export class GeminiService {
-  private static readonly API_ENDPOINT = "https://api.anthropic.com/v1/messages";
-  private static readonly MODEL = "claude-sonnet-4-20250514";
+// 初始化 Gemini AI
+const getGeminiInstance = () => {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   
-  /**
-   * 分析判決書內容
-   */
-  static async analyzeJudgment(judgmentText: string): Promise<JudgmentAnalysis> {
-    const prompt = `
-作為專業的台灣法律AI助手，請仔細分析以下法院判決書內容。
-
-判決書內容：
-${judgmentText}
-
-請以JSON格式提供完整的結構化分析，確保所有字段都有意義的內容：
-
-{
-  "summary": "案件核心摘要（100-150字，包含案件性質、主要爭點、判決結果）",
-  "caseInfo": {
-    "caseNumber": "案件編號（從判決書擷取完整案號）",
-    "court": "審理法院（完整法院名稱）",
-    "parties": {
-      "plaintiff": "原告姓名或名稱（多人時用頓號分隔）",
-      "defendant": "被告姓名或名稱（多人時用頓號分隔）"
-    }
-  },
-  "favorablePoints": [
-    "對被告/上訴人有利的判決認定（至少3點，每點50-80字）"
-  ],
-  "unfavorablePoints": [
-    "對被告/上訴人不利的判決認定（至少3點，每點50-80字）"
-  ],
-  "legalGrounds": [
-    "判決引用的相關法條（包含完整條號和法律名稱）"
-  ],
-  "appealableIssues": [
-    "具體可行的上訴理由（至少3點，每點30-60字）"
-  ],
-  "recommendedStrategy": "綜合法律建議和策略方向（100-200字）"
-}
-
-分析要求：
-1. 確保所有內容基於判決書實際內容
-2. 法律分析要客觀專業
-3. 上訴理由要具體可行
-4. 回應必須是有效的JSON格式，不要包含其他文字
-5. 如果某些資訊在判決書中不明確，請明確說明「判決書中未明確記載」
-    `;
-
-    try {
-      const response = await this.callAPI(prompt, 3000);
-      return this.parseJudgmentAnalysis(response);
-    } catch (error) {
-      console.error('判決分析失敗:', error);
-      throw new Error(`AI分析服務錯誤: ${error instanceof Error ? error.message : '未知錯誤'}`);
-    }
+  if (!apiKey) {
+    throw new Error('未設定 VITE_GEMINI_API_KEY 環境變數');
   }
+  
+  return new GoogleGenerativeAI(apiKey);
+};
 
-  /**
-   * 生成法律文書
-   */
-  static async generateDocument(request: DocumentGenerationRequest): Promise<string> {
-    const { documentType, analysis, customInstructions } = request;
+// 使用 gemini-1.5-flash 進行分析
+const ANALYSIS_MODEL = "gemini-1.5-flash";
+// 使用 gemini-1.5-pro 進行文書生成  
+const WRITING_MODEL = "gemini-1.5-pro";
+
+export const analyzeVerdict = async (pdfText: string): Promise<VerdictAnalysis> => {
+  const prompt = `
+    你是一位台灣資深律師。請分析以下判決書內容，並提取關鍵資訊。
+    請用繁體中文回答，並以JSON格式回應。
     
-    const prompt = `
-作為專業的台灣法律文書撰寫助手，請根據以下判決分析結果撰寫${documentType}。
+    判決書內容開始：
+    ${pdfText}
+    判決書內容結束。
 
-案件分析資料：
-${JSON.stringify(analysis, null, 2)}
+    請針對以上內容進行結構化分析，回應格式必須是有效的JSON：
 
-${customInstructions ? `\n特殊要求：${customInstructions}\n` : ''}
-
-請依照台灣法院${documentType}的標準格式撰寫，包含：
-
-1. 文書標頭（當事人資訊）
-2. 案件基本資料
-3. 事實陳述
-4. 理由闡述
-5. 法律依據
-6. 聲明事項
-
-格式要求：
-- 嚴格遵循台灣法院書狀格式
-- 使用正確的法律術語
-- 條理清晰，論述有力
-- 引用的法條要精確
-- 文字要正式且專業
-
-請直接提供完整的${documentType}內容，不要包含任何前言或後語。
-    `;
-
-    try {
-      const response = await this.callAPI(prompt, 4000);
-      return this.formatLegalDocument(response, documentType);
-    } catch (error) {
-      console.error('文書生成失敗:', error);
-      throw new Error(`文書生成錯誤: ${error instanceof Error ? error.message : '未知錯誤'}`);
-    }
-  }
-
-  /**
-   * 調用 AI API
-   */
-  private static async callAPI(prompt: string, maxTokens: number = 2000): Promise<string> {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    
-    if (!apiKey) {
-      throw new Error('未設定 API 金鑰，請在環境變數中設定 VITE_GEMINI_API_KEY');
-    }
-
-    const response = await fetch(this.API_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-        "anthropic-version": "2023-06-01"
+    {
+      "caseNumber": "判決字號 (例如: 112年度訴字第123號)",
+      "parties": {
+        "plaintiff": "原告/上訴人/告訴人姓名",
+        "defendant": "被告/被上訴人姓名"
       },
-      body: JSON.stringify({
-        model: this.MODEL,
-        max_tokens: maxTokens,
-        messages: [
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.3, // 較低的溫度以確保準確性
-        top_p: 0.9
-      })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(
-        `API 請求失敗 (${response.status}): ${
-          errorData?.error?.message || response.statusText
-        }`
-      );
+      "summary": "判決主文與結果摘要 (150字內)",
+      "keyFacts": [
+        "本案關鍵事實1",
+        "本案關鍵事實2",
+        "本案關鍵事實3"
+      ],
+      "legalIssues": [
+        "本案主要法律爭點1",
+        "本案主要法律爭點2",
+        "本案主要法律爭點3"
+      ],
+      "judgeReasoning": "法官判決理由的核心邏輯摘要",
+      "strengths": [
+        "對我方(若要上訴)有利的觀點1",
+        "對我方有利的觀點2",
+        "原審判決瑕疵1"
+      ],
+      "weaknesses": [
+        "對我方不利的事實1",
+        "對我方不利的法律見解1",
+        "需要補強的論點1"
+      ],
+      "suggestedStrategy": "建議的上訴或攻防策略"
     }
 
-    const data = await response.json();
+    重要：請確保回應是完整且有效的JSON格式，不要包含任何其他文字。
+  `;
+
+  try {
+    const genAI = getGeminiInstance();
+    const model = genAI.getGenerativeModel({ model: ANALYSIS_MODEL });
     
-    if (!data.content || !Array.isArray(data.content) || data.content.length === 0) {
-      throw new Error('API 回應格式錯誤');
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    if (!text) {
+      throw new Error("Gemini 未返回分析結果");
     }
 
-    return data.content[0].text || '';
-  }
-
-  /**
-   * 解析判決分析結果
-   */
-  private static parseJudgmentAnalysis(responseText: string): JudgmentAnalysis {
-    try {
-      // 嘗試提取 JSON
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error('回應中未找到有效的 JSON 格式');
-      }
-
-      const parsed = JSON.parse(jsonMatch[0]);
-      
-      // 驗證必要字段
-      this.validateAnalysisResult(parsed);
-      
-      return parsed;
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        throw new Error('AI 回應的 JSON 格式有誤');
-      }
-      throw error;
+    // 提取JSON部分
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("回應中未找到有效的JSON格式");
     }
-  }
 
-  /**
-   * 驗證分析結果
-   */
-  private static validateAnalysisResult(result: any): void {
-    const requiredFields = {
-      'summary': 'string',
-      'caseInfo': 'object',
-      'favorablePoints': 'array',
-      'unfavorablePoints': 'array',
-      'legalGrounds': 'array',
-      'appealableIssues': 'array',
-      'recommendedStrategy': 'string'
-    };
-
-    for (const [field, type] of Object.entries(requiredFields)) {
-      if (!(field in result)) {
+    const analysisResult = JSON.parse(jsonMatch[0]);
+    
+    // 驗證必要字段
+    const requiredFields = ['caseNumber', 'parties', 'summary', 'keyFacts', 'legalIssues', 'judgeReasoning', 'strengths', 'weaknesses', 'suggestedStrategy'];
+    for (const field of requiredFields) {
+      if (!analysisResult[field]) {
         throw new Error(`分析結果缺少必要字段: ${field}`);
       }
-      
-      if (type === 'array' && (!Array.isArray(result[field]) || result[field].length === 0)) {
-        throw new Error(`字段 ${field} 必須是非空陣列`);
-      }
-      
-      if (type === 'string' && typeof result[field] !== 'string') {
-        throw new Error(`字段 ${field} 必須是字符串`);
-      }
-      
-      if (type === 'object' && typeof result[field] !== 'object') {
-        throw new Error(`字段 ${field} 必須是物件`);
-      }
     }
 
-    // 驗證 caseInfo 子字段
-    const caseInfo = result.caseInfo;
-    if (!caseInfo.caseNumber || !caseInfo.court || !caseInfo.parties) {
-      throw new Error('案件資訊不完整');
+    return analysisResult as VerdictAnalysis;
+    
+  } catch (error) {
+    console.error("Gemini Analysis Error:", error);
+    
+    if (error instanceof Error) {
+      if (error.message.includes('API key')) {
+        throw new Error("API 金鑰錯誤，請檢查 VITE_GEMINI_API_KEY 設定");
+      } else if (error.message.includes('quota')) {
+        throw new Error("API 配額已用完，請稍後再試");
+      } else if (error.message.includes('JSON')) {
+        throw new Error("AI 回應格式錯誤，請重新嘗試");
+      }
+      throw new Error(`分析判決書失敗: ${error.message}`);
     }
     
-    if (!caseInfo.parties.plaintiff || !caseInfo.parties.defendant) {
-      throw new Error('當事人資訊不完整');
-    }
+    throw new Error("分析判決書時發生未知錯誤，請稍後再試");
+  }
+};
+
+export const generateAppealDraft = async (
+  pdfText: string, 
+  analysis: VerdictAnalysis, 
+  docType: DocType
+): Promise<string> => {
+  
+  let typePrompt = "";
+  switch(docType) {
+    case DocType.APPEAL_CIVIL:
+      typePrompt = "民事上訴狀";
+      break;
+    case DocType.APPEAL_CRIMINAL:
+      typePrompt = "刑事上訴狀";
+      break;
+    case DocType.DEFENSE:
+      typePrompt = "民事/刑事答辯狀";
+      break;
+    case DocType.COMPLAINT:
+      typePrompt = "起訴狀";
+      break;
+    default:
+      typePrompt = "法律書狀";
   }
 
-  /**
-   * 格式化法律文書
-   */
-  private static formatLegalDocument(content: string, documentType: string): string {
-    // 移除可能的前後綴文字
-    let formatted = content.trim();
+  const prompt = `
+    你是一位台灣資深律師。請根據以下判決書原文以及先前的分析結果，撰寫一份專業的「${typePrompt}」。
     
-    // 確保文書有適當的標頭
-    if (!formatted.includes(documentType)) {
-      formatted = `${documentType}\n\n${formatted}`;
+    **重要要求：**
+    1. 格式必須符合台灣法院書狀慣例（包含案號、當事人欄位、為上訴聲明事等）。
+    2. 引用法條必須精確。
+    3. 針對原審判決的違法或不當之處（若是上訴狀）進行強有力的駁斥。
+    4. 語氣需莊重、專業、有說服力。
+    5. 使用繁體中文。
+    6. 請直接提供書狀內容，不要包含任何前言說明。
+
+    **分析摘要參考：**
+    案號：${analysis.caseNumber}
+    當事人：${analysis.parties.plaintiff} vs ${analysis.parties.defendant}
+    摘要：${analysis.summary}
+    法律爭點：${analysis.legalIssues.join('、')}
+    有利觀點：${analysis.strengths.join('、')}
+    不利因素：${analysis.weaknesses.join('、')}
+    建議策略：${analysis.suggestedStrategy}
+
+    **原始判決書內容參考：**
+    ${pdfText.substring(0, 15000)}... (內容過長，已截取前段)
+    
+    請撰寫完整的${typePrompt}：
+  `;
+
+  try {
+    const genAI = getGeminiInstance();
+    const model = genAI.getGenerativeModel({ model: WRITING_MODEL });
+    
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    if (!text) {
+      throw new Error("Gemini 未返回生成結果");
+    }
+
+    return text.trim();
+    
+  } catch (error) {
+    console.error("Gemini Generation Error:", error);
+    
+    if (error instanceof Error) {
+      if (error.message.includes('API key')) {
+        throw new Error("API 金鑰錯誤，請檢查 VITE_GEMINI_API_KEY 設定");
+      } else if (error.message.includes('quota')) {
+        throw new Error("API 配額已用完，請稍後再試");
+      }
+      throw new Error(`撰寫書狀失敗: ${error.message}`);
     }
     
-    // 標準化格式
-    formatted = formatted
-      // 統一標點符號
-      .replace(/，\s+/g, '，')
-      .replace(/。\s+/g, '。\n')
-      // 確保段落間距
-      .replace(/\n{3,}/g, '\n\n')
-      // 修正法條格式
-      .replace(/第\s*(\d+)\s*條/g, '第$1條')
-      .trim();
-
-    return formatted;
+    throw new Error("撰寫書狀時發生未知錯誤，請稍後再試");
   }
-
-  /**
-   * 測試 API 連接
-   */
-  static async testConnection(): Promise<boolean> {
-    try {
-      await this.callAPI('請回應「連接成功」', 100);
-      return true;
-    } catch (error) {
-      console.error('API 連接測試失敗:', error);
-      return false;
-    }
-  }
-}
-
-export default GeminiService;
+};
