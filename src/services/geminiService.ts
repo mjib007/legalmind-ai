@@ -1,19 +1,25 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { VerdictAnalysis, DocType } from "../types";
 
-// 簡化的 API 金鑰獲取
+// 獲取 API 金鑰 - 支援多種方式
 const getApiKey = (): string => {
-  // 從 localStorage 獲取（用戶手動輸入）
+  // 方式1: Vite 環境變數
+  const viteEnvKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (viteEnvKey) {
+    return viteEnvKey;
+  }
+  
+  // 方式2: 從 localStorage 獲取（用戶手動設定）
   const storedKey = localStorage.getItem('GEMINI_API_KEY');
   if (storedKey) {
     return storedKey;
   }
   
-  // 提示用戶輸入
-  const userKey = prompt('請輸入您的 Gemini API 金鑰:');
-  if (userKey) {
-    localStorage.setItem('GEMINI_API_KEY', userKey);
-    return userKey;
+  // 方式3: 提示用戶輸入
+  const userKey = prompt('請輸入您的 Gemini API 金鑰（將儲存在瀏覽器中）:');
+  if (userKey?.trim()) {
+    localStorage.setItem('GEMINI_API_KEY', userKey.trim());
+    return userKey.trim();
   }
   
   throw new Error('未設定 Gemini API 金鑰');
@@ -25,7 +31,6 @@ const getGeminiInstance = () => {
   return new GoogleGenerativeAI(apiKey);
 };
 
-// 使用標準模型
 const ANALYSIS_MODEL = "gemini-1.5-flash";
 const WRITING_MODEL = "gemini-1.5-pro";
 
@@ -109,7 +114,9 @@ export const analyzeVerdict = async (pdfText: string): Promise<VerdictAnalysis> 
     
     if (error instanceof Error) {
       if (error.message.includes('API key')) {
-        throw new Error("API 金鑰錯誤，請檢查設定");
+        // 清除錯誤的 API 金鑰，讓使用者重新輸入
+        localStorage.removeItem('GEMINI_API_KEY');
+        throw new Error("API 金鑰錯誤，請重新設定");
       } else if (error.message.includes('quota')) {
         throw new Error("API 配額已用完，請稍後再試");
       } else if (error.message.includes('JSON')) {
@@ -191,7 +198,8 @@ export const generateAppealDraft = async (
     
     if (error instanceof Error) {
       if (error.message.includes('API key')) {
-        throw new Error("API 金鑰錯誤，請檢查設定");
+        localStorage.removeItem('GEMINI_API_KEY');
+        throw new Error("API 金鑰錯誤，請重新設定");
       } else if (error.message.includes('quota')) {
         throw new Error("API 配額已用完，請稍後再試");
       }
