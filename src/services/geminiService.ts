@@ -1,21 +1,15 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { VerdictAnalysis, DocType } from "../types";
 
-// 獲取 API 金鑰的函數
+// 簡化的 API 金鑰獲取
 const getApiKey = (): string => {
-  // 在 CDN 架構中，我們需要不同的方式獲取 API 金鑰
-  // 選項1: 從 window 對象獲取（如果設定為全域變數）
-  if (window.GEMINI_API_KEY) {
-    return window.GEMINI_API_KEY;
-  }
-  
-  // 選項2: 從 localStorage 獲取（用戶手動輸入）
+  // 從 localStorage 獲取（用戶手動輸入）
   const storedKey = localStorage.getItem('GEMINI_API_KEY');
   if (storedKey) {
     return storedKey;
   }
   
-  // 選項3: 提示用戶輸入
+  // 提示用戶輸入
   const userKey = prompt('請輸入您的 Gemini API 金鑰:');
   if (userKey) {
     localStorage.setItem('GEMINI_API_KEY', userKey);
@@ -31,7 +25,7 @@ const getGeminiInstance = () => {
   return new GoogleGenerativeAI(apiKey);
 };
 
-// 使用較新的模型版本
+// 使用標準模型
 const ANALYSIS_MODEL = "gemini-1.5-flash";
 const WRITING_MODEL = "gemini-1.5-pro";
 
@@ -207,10 +201,3 @@ export const generateAppealDraft = async (
     throw new Error("撰寫書狀時發生未知錯誤，請稍後再試");
   }
 };
-
-// 添加全域型別聲明
-declare global {
-  interface Window {
-    GEMINI_API_KEY?: string;
-  }
-}
