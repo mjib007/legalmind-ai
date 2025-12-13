@@ -16,7 +16,7 @@ const getApiKey = (): string => {
   }
   
   // 方式3: 提示用戶輸入
-  const userKey = prompt('請輸入您的 Gemini API 金鑰（將儲存在瀏覽器中）:');
+  const userKey = prompt('請輸入您的 Google Gemini API 金鑰（將儲存在瀏覽器中）:');
   if (userKey?.trim()) {
     localStorage.setItem('GEMINI_API_KEY', userKey.trim());
     return userKey.trim();
@@ -113,14 +113,16 @@ export const analyzeVerdict = async (pdfText: string): Promise<VerdictAnalysis> 
     console.error("Gemini Analysis Error:", error);
     
     if (error instanceof Error) {
-      if (error.message.includes('API key')) {
+      if (error.message.includes('API key') || error.message.includes('API_KEY')) {
         // 清除錯誤的 API 金鑰，讓使用者重新輸入
         localStorage.removeItem('GEMINI_API_KEY');
         throw new Error("API 金鑰錯誤，請重新設定");
-      } else if (error.message.includes('quota')) {
+      } else if (error.message.includes('quota') || error.message.includes('QUOTA')) {
         throw new Error("API 配額已用完，請稍後再試");
       } else if (error.message.includes('JSON')) {
         throw new Error("AI 回應格式錯誤，請重新嘗試");
+      } else if (error.message.includes('SAFETY')) {
+        throw new Error("內容被 AI 安全過濾器拒絕，請檢查判決書內容");
       }
       throw new Error(`分析判決書失敗: ${error.message}`);
     }
@@ -197,11 +199,13 @@ export const generateAppealDraft = async (
     console.error("Gemini Generation Error:", error);
     
     if (error instanceof Error) {
-      if (error.message.includes('API key')) {
+      if (error.message.includes('API key') || error.message.includes('API_KEY')) {
         localStorage.removeItem('GEMINI_API_KEY');
         throw new Error("API 金鑰錯誤，請重新設定");
-      } else if (error.message.includes('quota')) {
+      } else if (error.message.includes('quota') || error.message.includes('QUOTA')) {
         throw new Error("API 配額已用完，請稍後再試");
+      } else if (error.message.includes('SAFETY')) {
+        throw new Error("內容被 AI 安全過濾器拒絕");
       }
       throw new Error(`撰寫書狀失敗: ${error.message}`);
     }
