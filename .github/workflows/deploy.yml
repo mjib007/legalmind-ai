@@ -1,9 +1,7 @@
-name: Deploy LegalMind AI
-
+name: Deploy LegalMind AI (CDN Architecture)
 on:
   push:
     branches: [ main ]
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -18,9 +16,7 @@ jobs:
     - run: npm install
       
     - run: npm run build
-      env:
-        VITE_GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        
+      
     - uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
