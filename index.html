@@ -1,75 +1,115 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-TW">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/legalmind-ai/legal-scales.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LegalMind AI - 判決分析與訴狀生成助手</title>
     
-    <!-- SEO Meta Tags -->
-    <title>LegalMind AI - 判決分析與訴狀生成助手v0.03</title>
-    <meta name="description" content="使用 AI 技術分析法院判決書，智能生成各種法律訴狀。專為台灣法律教育設計的創新工具。" />
-    <meta name="keywords" content="法律科技,AI,判決分析,訴狀生成,法律教育,台灣,法院判決" />
-    <meta name="author" content="Jackie - Fu Jen Catholic University Law School" />
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://mjb007.github.io/legalmind-ai/" />
-    <meta property="og:title" content="LegalMind AI - 判決分析與訴狀生成助手" />
-    <meta property="og:description" content="使用 AI 技術分析法院判決書，智能生成各種法律訴狀。專為台灣法律教育設計的創新工具。" />
-    <meta property="og:image" content="https://mjb007.github.io/legalmind-ai/og-image.png" />
-
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://mjb007.github.io/legalmind-ai/" />
-    <meta property="twitter:title" content="LegalMind AI - 判決分析與訴狀生成助手" />
-    <meta property="twitter:description" content="使用 AI 技術分析法院判決書，智能生成各種法律訴狀。專為台灣法律教育設計的創新工具。" />
-    <meta property="twitter:image" content="https://mjb007.github.io/legalmind-ai/og-image.png" />
-
-    <!-- Favicon -->
-    <link rel="apple-touch-icon" sizes="180x180" href="/legalmind-ai/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/legalmind-ai/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/legalmind-ai/favicon-16x16.png">
-    <link rel="manifest" href="/legalmind-ai/site.webmanifest">
-    
-    <!-- Preload critical fonts -->
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
     
-    <!-- Theme color -->
-    <meta name="theme-color" content="#1e3a5f" />
+    <!-- Tailwind Config -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"Noto Sans TC"', 'sans-serif'],
+              serif: ['"Noto Serif TC"', 'serif'],
+            },
+            colors: {
+              legal: {
+                50: '#f4f6f8',
+                100: '#e4e8ed',
+                200: '#c5d0db',
+                300: '#94a9bf',
+                400: '#5f7ea0',
+                500: '#3d6083',
+                600: '#2f4b69',
+                700: '#263d55',
+                800: '#223447',
+                900: '#202d3c',
+              }
+            }
+          }
+        }
+      }
+    </script>
     
-    <!-- Prevent zoom on mobile -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <!-- Import Map for CDN dependencies -->
+
+    
+    <!-- Custom Styles -->
+    <style>
+      /* Custom scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #c5d0db;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a9bf;
+      }
+      
+      /* Animation keyframes */
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes slideInFromTop {
+        from { transform: translateY(-10px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      @keyframes zoomIn {
+        from { transform: scale(0.95); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+      }
+      
+      .animate-in {
+        animation: fadeIn 0.5s ease-out;
+      }
+      .fade-in {
+        animation: fadeIn 0.5s ease-out;
+      }
+      .zoom-in-95 {
+        animation: zoomIn 0.5s ease-out;
+      }
+      .slide-in-from-top-2 {
+        animation: slideInFromTop 0.3s ease-out;
+      }
+    </style>
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "@google/generative-ai": "https://esm.sh/@google/generative-ai@0.21.0",
+        "lucide-react": "https://esm.sh/lucide-react@0.263.1",
+        "react-markdown": "https://esm.sh/react-markdown@9.0.1",
+        "pdfjs-dist": "https://esm.sh/pdfjs-dist@5.4.449"
+      }
+    }
+    </script>
     <script type="module" crossorigin src="/legalmind-ai/assets/index-cbfa1681.js"></script>
     <link rel="modulepreload" crossorigin href="/legalmind-ai/assets/vendor-b1791c80.js">
     <link rel="modulepreload" crossorigin href="/legalmind-ai/assets/ui-2073ea28.js">
     <link rel="stylesheet" href="/legalmind-ai/assets/index-de012453.css">
   </head>
-  <body>
+  <body class="bg-legal-50 text-slate-800 antialiased h-screen overflow-hidden">
     <div id="root"></div>
     
+    <!-- Main App Script -->
     
-    <!-- Schema.org structured data -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebApplication",
-      "name": "LegalMind AI",
-      "description": "AI-powered legal judgment analysis and document generation tool for Taiwan legal education",
-      "url": "https://mjb007.github.io/legalmind-ai/",
-      "applicationCategory": "LegalTech",
-      "operatingSystem": "Web Browser",
-      "author": {
-        "@type": "Person",
-        "name": "Jackie",
-        "affiliation": "Fu Jen Catholic University Law School"
-      },
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      }
-    }
-    </script>
   </body>
 </html>
