@@ -6,16 +6,6 @@ export default defineConfig({
   base: '/legalmind-ai/',
   build: {
     outDir: 'dist',
-    assetsDir: 'assets',
-    rollupOptions: {
-      external: [
-        'react',
-        'react-dom/client',
-        '@google/generative-ai',
-        'lucide-react',
-        'react-markdown',
-        'pdfjs-dist'
-      ]
-    }
+    assetsDir: 'assets'
   }
 })
