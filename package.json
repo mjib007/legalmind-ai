@@ -10,7 +10,10 @@
   },
   "dependencies": {
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "lucide-react": "^0.263.1",
+    "@google/generative-ai": "^0.21.0",
+    "pdfjs-dist": "^5.4.449"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",
