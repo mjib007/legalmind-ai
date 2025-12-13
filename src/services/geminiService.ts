@@ -1,20 +1,38 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { VerdictAnalysis, DocType } from "../types";
 
-// 初始化 Gemini AI
-const getGeminiInstance = () => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  
-  if (!apiKey) {
-    throw new Error('未設定 VITE_GEMINI_API_KEY 環境變數');
+// 獲取 API 金鑰的函數
+const getApiKey = (): string => {
+  // 在 CDN 架構中，我們需要不同的方式獲取 API 金鑰
+  // 選項1: 從 window 對象獲取（如果設定為全域變數）
+  if (window.GEMINI_API_KEY) {
+    return window.GEMINI_API_KEY;
   }
   
+  // 選項2: 從 localStorage 獲取（用戶手動輸入）
+  const storedKey = localStorage.getItem('GEMINI_API_KEY');
+  if (storedKey) {
+    return storedKey;
+  }
+  
+  // 選項3: 提示用戶輸入
+  const userKey = prompt('請輸入您的 Gemini API 金鑰:');
+  if (userKey) {
+    localStorage.setItem('GEMINI_API_KEY', userKey);
+    return userKey;
+  }
+  
+  throw new Error('未設定 Gemini API 金鑰');
+};
+
+// 初始化 Gemini AI
+const getGeminiInstance = () => {
+  const apiKey = getApiKey();
   return new GoogleGenerativeAI(apiKey);
 };
 
-// 使用 gemini-1.5-flash 進行分析
+// 使用較新的模型版本
 const ANALYSIS_MODEL = "gemini-1.5-flash";
-// 使用 gemini-1.5-pro 進行文書生成  
 const WRITING_MODEL = "gemini-1.5-pro";
 
 export const analyzeVerdict = async (pdfText: string): Promise<VerdictAnalysis> => {
@@ -97,7 +115,7 @@ export const analyzeVerdict = async (pdfText: string): Promise<VerdictAnalysis> 
     
     if (error instanceof Error) {
       if (error.message.includes('API key')) {
-        throw new Error("API 金鑰錯誤，請檢查 VITE_GEMINI_API_KEY 設定");
+        throw new Error("API 金鑰錯誤，請檢查設定");
       } else if (error.message.includes('quota')) {
         throw new Error("API 配額已用完，請稍後再試");
       } else if (error.message.includes('JSON')) {
@@ -179,7 +197,7 @@ export const generateAppealDraft = async (
     
     if (error instanceof Error) {
       if (error.message.includes('API key')) {
-        throw new Error("API 金鑰錯誤，請檢查 VITE_GEMINI_API_KEY 設定");
+        throw new Error("API 金鑰錯誤，請檢查設定");
       } else if (error.message.includes('quota')) {
         throw new Error("API 配額已用完，請稍後再試");
       }
@@ -189,3 +207,10 @@ export const generateAppealDraft = async (
     throw new Error("撰寫書狀時發生未知錯誤，請稍後再試");
   }
 };
+
+// 添加全域型別聲明
+declare global {
+  interface Window {
+    GEMINI_API_KEY?: string;
+  }
+}
